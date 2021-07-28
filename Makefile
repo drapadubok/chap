@@ -19,10 +19,10 @@ install_modules:
 .PHONY: install_modules
 
 run_local:
-	cd chap; SECRET_KEY_BASE=123 PORT=4000 mix phx.server
+	cd src/chap; mix phx.server
 
 docker_build:
-	cd chap; DOCKER_BUILDKIT=1 docker build --progress=plain -t chap .
+	cd src/chap; DOCKER_BUILDKIT=1 docker build --progress=plain -t chap .
 	docker tag chap drapabubok/chap:latest
 	docker tag chap drapabubok/chap:$(COMMIT_HASH)
 	docker push drapabubok/chap:latest
