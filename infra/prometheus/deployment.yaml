@@ -1,0 +1,7 @@
+# TODO: actual installation
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prometheus
+  labels:
+    name: prometheus

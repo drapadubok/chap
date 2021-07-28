@@ -15,9 +15,11 @@ RUN set -x &&\
 	mix local.rebar --force &&\
 	mix archive.install hex phx_new $PHX_VERSION --force
 
-COPY . /opt/app/chap
+COPY mix.exs /opt/app/chap/mix.exs
 WORKDIR /opt/app/chap
 RUN mix do deps.get, compile
+
+COPY . /opt/app/chap
 RUN mix release chap
 
 ENV REPLACE_OS_VARS=true

@@ -1,0 +1,77 @@
+# TODO: normally I would run this on some sort of a cloud, and generate the secret via terraform
+apiVersion: v1
+kind: Secret
+metadata:
+  name: chap-secrets
+type: Opaque
+data:
+  secret_key_base: VzVHNVNzRFRmNC9xYURZeXdnZHNoNnQ2M1Y4a2FRTy9HaXlBV0R1VktyVjFmU2Y0bFJRWFltMzEzakJLYTdmcw==
+  db_username: ZGltYQ==
+  db_password: c2VjcmV0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chap
+  template:
+    metadata:
+      labels:
+        app: chap
+    spec:
+      containers:
+        - name: chap
+          image: drapabubok/chap:2f41f46
+          ports:
+            - containerPort: 4000
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 4000
+          livenessProbe:
+            httpGet:
+              path: /health/alive
+              port: 4000
+          env:
+            - name: HOST
+              value: "example.com"
+            - name: PORT
+              value: "4000"
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: chap-secrets
+                  key: secret_key_base
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: chap-secrets
+                  key: db_username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chap-secrets
+                  key: db_password
+            - name: DB_NAME
+              value: "default"
+            - name: DB_HOSTNAME
+              value: "clickhouse-repl-05.ch"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chap-service
+spec:
+  ports:
+    - port: 4000
+      targetPort: 4000
+      protocol: TCP
+      name: http
+  selector:
+    app: chap
+  type: LoadBalancer
+
