@@ -18,6 +18,9 @@ install_modules:
 	$(PYTHON) -m pip install -r scripts/requirements.txt --use-deprecated=legacy-resolver
 .PHONY: install_modules
 
+run_local:
+	cd chap; SECRET_KEY_BASE=123 PORT=4000 mix phx.server
+
 docker_build:
 	cd chap; DOCKER_BUILDKIT=1 docker build --progress=plain -t chap .
 	docker tag chap drapabubok/chap:latest
