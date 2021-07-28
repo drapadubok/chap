@@ -91,7 +91,7 @@ You should see a REPL where you can pass queries. Let's run some queries!
 ### Producing sample data
 To create funnels we need some events. Here is how we're going to do that. This part depends on Python, so you might want to install the [requirements](scripts/requirements.txt).
 
-* [Create the tables](scripts/create_tables.py) by running `python scripts/create_tables.py`. 
+#### [Create the tables](scripts/create_tables.py) by running `python scripts/create_tables.py`. 
 We will create two tables, and this is something that I found to be a bit less intuitive with Clickhouse. The tables serve as abstractions to various functionalities (e.g. a table can serve as an interface for Kafka, or as an abstraction that distributes the queries across shards).
 First, we create a replicated table on a cluster, meaning that we'll have a local replica of this table on each node.
 
@@ -119,7 +119,7 @@ One thing to know, basic `DROP TABLE` queries are not enough at this point, you'
     DROP TABLE IF EXISTS default.events ON CLUSTER '{cluster}';
     DROP TABLE IF EXISTS default.events_local ON CLUSTER '{cluster}';
 
-* [Produce a sample](scripts/create_data.py). This might need a bit of explanation.
+#### [Produce a sample](scripts/create_data.py). This might need a bit of explanation.
 Here we are using a simplistic config to simulate two groups, A and B, and we provide a distribution for sampling and parameters for this distribution to simulate some kind of experiment.
 The key here is in this dict:
 
