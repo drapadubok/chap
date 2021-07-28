@@ -1,0 +1,41 @@
+apiVersion: "clickhouse.altinity.com/v1"
+kind: "ClickHouseInstallation"
+metadata:
+  name: "repl-05"
+spec:
+  defaults:
+    templates:
+      dataVolumeClaimTemplate: default
+      podTemplate: clickhouse:21.7
+  configuration:
+    zookeeper:
+      nodes:
+        - host: zookeeper.zk
+          port: 2181
+    clusters:
+      - name: replicated
+        layout:
+          shardsCount: 2
+          replicasCount: 2
+    settings:
+      logger/level: information
+    users:
+      dima/password: secret
+      dima/networks/ip: "::/0"
+      grafana/password: secret
+      grafana/networks/ip: "::/0"
+  templates:
+    volumeClaimTemplates:
+      - name: default
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 500Mi
+    podTemplates:
+      - name: clickhouse:21.7
+        spec:
+          containers:
+            - name: clickhouse-pod
+              image: yandex/clickhouse-server:21.7
