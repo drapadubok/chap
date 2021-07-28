@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: chap
-          image: drapabubok/chap:2f41f46
+          image: drapabubok/chap:latest
           ports:
             - containerPort: 4000
           readinessProbe:
