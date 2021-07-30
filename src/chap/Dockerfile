@@ -1,5 +1,4 @@
-# Build deps
-FROM elixir:alpine as builder
+FROM elixir:alpine
 
 ENV TERM=xterm
 ENV PHX_VERSION 1.5.9
