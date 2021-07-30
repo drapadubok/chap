@@ -22,24 +22,10 @@ defmodule Chap.Funnel do
   end
 
   @doc """
-  Serialize the funnel config into a deterministic string to calculate the hash.
-  """
-  def serialize(funnel_config) do
-    """
-        #{funnel_config.breakdown_fields}-
-        #{funnel_config.ordered_event_list}-
-        #{funnel_config.uid_column}-
-        #{funnel_config.timestamp_column}-
-        #{funnel_config.window}
-    """
-  end
-
-  @doc """
   Hash the funnel config to store in the ETS cache.
   """
   def hash_config(funnel_config) do
     funnel_config
-    |> serialize
     |> :erlang.phash2
   end
 
