@@ -82,7 +82,7 @@ spec:
       #            - key: "app"
       #              operator: In
       #              values:
-      #                - zk
+      #                - zookeeper
       #        topologyKey: "kubernetes.io/hostname"
       containers:
         - name: kubernetes-zookeeper
