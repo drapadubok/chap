@@ -28,7 +28,7 @@ However, Elixir is challenging for me, due to the syntax and some of the idioms 
 Here I have four components that need to be taken care of.
 * Kubernetes - this is where this solution will run. I'll be using minikube here.
 * Zookeeper installation - this is required for replication, and at some point I wanted to simulate a real-time solution by having a Kafka stream feeding the database. I didn't have time for that, so here ZK is only for replication.
-* Clickhouse installation - I'll be using Clickhouse Operator, developed and maintained by Altinity, a company that offers managed Clickhouse solutions.
+* Clickhouse installation - I'll be using Clickhouse Operator, developed and maintained by [Altinity](https://altinity.com/), a company that offers managed Clickhouse solutions.
 * Phoenix JSON API - this is how I will be interacting with the Clickhouse installation. 
 * (TODO) Web UI - an interface to allow easier visualization of the results.
 * (TODO) Prometheus monitoring - didn't have time to set this up, however should be fairly easy, a lot of documentation available. 
