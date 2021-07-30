@@ -4,9 +4,11 @@ So what is this repo about?
 
 My plan was to have a hobby project on a couple of technologies that I am curious about, because I haven't had a chance to work on something hands-on for a little while.
 
-I have to definitely mention [Plausible](https://github.com/plausible/analytics) here, because as I was working through some of the problems, I found ideas and solutions in their codebase. The idea of mixing Clickhouse with Elixir was parallel, however, not inspired by Plausible. Regardless, those people are exciting and inspiring, and the idea of a lightweight, privacy-friendly analytics solution is awesome, so follow them!
+This is going to be a backend for a "funnel analytics" tool. It's quoted, because it's so much more than what I'm going to have here, but it's a start. What do you do with a funnel? Imagine you have an event pipeline. It can be a sequence of steps between impression and acquisition, or maybe it's a series of quests a player does. If you take a large set of users, not everyone will reach the final step. What you want to find out is, as exploratory step, where is a bottleneck. And based on that, you would want to proceed with experimentation (AB test, for example) to find a way to make more users go to further steps of the funnel.
 
-## What do we have here?
+While in general it's important to have a proper hypothesis BEFORE the experiment, and base the decision on a metric that you picked before the experiment, there is a value in an ability to explore the data, and having a simple dynamic funnel tool can help with that. Here I'm going to make a very simplistic tool, more to play with the tech, and hopefully it will inspire you to do something fun too.
+
+Before I begin, I have to definitely mention [Plausible](https://github.com/plausible/analytics) here, because as I was working through some of the difficulties with Clickhouse - Elixir interfacing, I found solutions in their codebase. They are building a lightweight, privacy-friendly analytics solution, which looks clear and simple. My choice of mixing Clickhouse with Elixir was parallel, not inspired by Plausible. Regardless, these people are awesome, so follow them!
 
 ### Clickhouse
 
@@ -23,25 +25,25 @@ Phoenix is a web framework written in Elixir. I've been touching it a bit in the
 However, Elixir is challenging for me, due to the syntax and some of the idioms that I struggle with, so even though this specific example doesn't take advantage of any of the Elixir strengths, I used it to get a bit more familiar with the language.
 
 ## The setup
-Here we have four components that we need to take care of.
-* Kubernetes - this is where this solution will run. We'll be using minikube here.
+Here I have four components that need to be taken care of.
+* Kubernetes - this is where this solution will run. I'll be using minikube here.
 * Zookeeper installation - this is required for replication, and at some point I wanted to simulate a real-time solution by having a Kafka stream feeding the database. I didn't have time for that, so here ZK is only for replication.
-* Clickhouse installation - we'll be using Clickhouse Operator, developed and maintained by Altinity, a company that offers managed Clickhouse solutions.
-* Phoenix JSON API - this is how we will be interacting with our Clickhouse installation. 
+* Clickhouse installation - I'll be using Clickhouse Operator, developed and maintained by Altinity, a company that offers managed Clickhouse solutions.
+* Phoenix JSON API - this is how I will be interacting with the Clickhouse installation. 
 * (TODO) Web UI - an interface to allow easier visualization of the results.
 * (TODO) Prometheus monitoring - didn't have time to set this up, however should be fairly easy, a lot of documentation available. 
 
 ### Kubernetes
-We will need to have a functional minikube installation, see [Minikube docs](https://minikube.sigs.k8s.io/docs/start/) to get started.
+I will need to have a functional minikube installation, see [Minikube docs](https://minikube.sigs.k8s.io/docs/start/) to get started.
 This setup essentially required two commands:
 1) `minikube start` - to actually create and start the cluster.
-2) `minikube tunnel` - to allow us to talk with the load balancer service deployed to the cluster (we are running locally here, so this is needed to be able to reach it). You can just run this command in a terminal window, and it will automatically pick up if a load balancer service is created.
+2) `minikube tunnel` - to allow us to talk with the load balancer service deployed to the cluster (I am running locally here, so this is needed to be able to reach it). You can just run this command in a terminal window, and it will automatically pick up if a load balancer service is created.
 
 ### Zookeeper
 I have relied on two documents for this setup:
 [k8s Zookeeper guide](https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/) and [CH Zookeeper guide](https://github.com/Altinity/clickhouse-operator/blob/master/docs/zookeeper_setup.md).
 
-All the resources were deployed using a [manifest](infra/zookeeper/zookeeper.yaml). The meaning of each line is described in detail in the k8s ZK guide linked above. The only peculiarity here is a commented node affinity section - this forces the pods to be created on different nodes to ensure availability, and since we have only one node - we need to disable it, or the pods will stay forever in Pending state.
+All the resources were deployed using a [manifest](infra/zookeeper/zookeeper.yaml). The meaning of each line is described in detail in the k8s ZK guide linked above. The only peculiarity here is a commented node affinity section - this forces the pods to be created on different nodes to ensure availability, and since I have only one node - I need to disable it, or the pods will stay forever in Pending state.
 
 1) `kubectl apply -f zookeeper/zookeeper.yaml` to deploy.
 2) `kubectl get pods -n zk` to check that the pods are created.
@@ -59,9 +61,9 @@ Let's look at it in more detail, since I took a fairly simple approach, without 
 3) `kubectl get pods -n ch` - verify that the pods are created with no errors.
 
 ### Intermediate check-up
-At this point we should have all the underlying infra set up. 
+At this point I should have all the underlying infra set up. 
 
-I will create a deployment of Phoenix later on, once we walk through the implementation details.
+I will create a deployment of Phoenix later on, once I walk through the implementation details.
 
 Let's first verify that Clickhouse can be used, by launching a client on one of the pods. You need to take note of one of the pods, and run the following command (chi-repl-05-replicated-0-0-0 is my pod name):
     
@@ -89,11 +91,12 @@ You should see a REPL where you can pass queries. Let's run some queries!
     ```
 
 ### Producing sample data
-To create funnels we need some events. Here is how we're going to do that. This part depends on Python, so you might want to install the [requirements](scripts/requirements.txt).
+To create funnels I need some events. Here is how I'm going to do that. This part depends on Python, so you might want to install the [requirements](scripts/requirements.txt).
 
 #### [Create the tables](scripts/create_tables.py) by running `python scripts/create_tables.py`. 
-We will create two tables, and this is something that I found to be a bit less intuitive with Clickhouse. The tables serve as abstractions to various functionalities (e.g. a table can serve as an interface for Kafka, or as an abstraction that distributes the queries across shards).
-First, we create a replicated table on a cluster, meaning that we'll have a local replica of this table on each node.
+I will create two tables, and this is something that I found to be a bit less intuitive with Clickhouse. The tables serve as abstractions to various functionalities (e.g. a table can serve as an interface for Kafka, or as an abstraction that distributes the queries across shards). Here is a list, and it's quite exciting what some of the table engines can do: [Table Engines](https://clickhouse.tech/docs/en/engines/table-engines/).
+
+First, I create a replicated table on a cluster, meaning that I'll have a local replica of this table on each node.
 
 
     CREATE TABLE IF NOT EXISTS events_local on cluster '{cluster}' 
@@ -109,7 +112,7 @@ First, we create a replicated table on a cluster, meaning that we'll have a loca
 At this point we can learn a bit more about Zookeeper. Since it takes care of the replication, it should have some information for us. I didn't need it, but I find it useful to know what can I find under the hood, so here is a command. You run it on one of the Zookeeper nodes to list the keys at a certain path:
 `kubectl exec -n zk zookeeper-1 zkCli.sh ls /clickhouse`. Feel free to explore further.
 
-Now that we have the local tables, we can create another table on top of them which will take care of the distribution of data, to allow us querying data locally on each of the nodes, and combining it later into a single response.
+Now that I have the local tables, I can create another table on top of them which will take care of the distribution of data, to allow us querying data locally on each of the nodes, and combining it later into a single response.
 
     CREATE TABLE IF NOT EXISTS events on cluster '{cluster}' AS events_local 
     ENGINE = Distributed('{cluster}', default, events_local, rand());
@@ -120,7 +123,7 @@ One thing to know, basic `DROP TABLE` queries are not enough at this point, you'
     DROP TABLE IF EXISTS default.events_local ON CLUSTER '{cluster}';
 
 #### [Produce a sample](scripts/create_data.py). This might need a bit of explanation.
-Here we are using a simplistic config to simulate two groups, A and B, and we provide a distribution for sampling and parameters for this distribution to simulate some kind of experiment.
+Here I'm using a simplistic config to simulate two groups, A and B, and I provide a distribution for sampling and parameters for this distribution to simulate some kind of experiment.
 The key here is in this dict:
 
 
@@ -133,7 +136,7 @@ The key here is in this dict:
        }
     }
 
-As you can see, the parameter for group B is a lot higher, so we simulate that for group B, the probability for event `go_to_checkout` to happen is a lot higher.
+As you can see, the parameter for group B is a lot higher, so I simulate that for group B, the probability for event `go_to_checkout` to happen is a lot higher.
 
 Once this script finishes running, it will insert the data to Clickhouse `default.events` table. The events will look like this:
 ```json
@@ -145,16 +148,16 @@ Verify that by running a query:
     SELECT event_name, count() FROM events GROUP BY event_name
 
 ### Elixir and Phoenix
-At this point we should have our cluster, our data loaded, and everything ready for the funnel tool to be built. Now, just a reminder, I don't want to build a UI at this point, so all I'm delivering is a JSON API that can be interfaced with.
+At this point I should have a cluster, data loaded, and everything ready for the funnel tool to be built. Now, I don't want to build a UI at this point, so all I'm delivering is a JSON API that can be interfaced with.
 
 At this point I assume that you have Elixir and Phoenix of version >= 1.5 installed (I've got 1.5.9).
 
-1) `mix phx.new chap --no-webpack --no-html --no-ecto` - create bare bones Phoenix app. We don't need webpack or html, because we're not having UI here, and I also opt out of Ecto (ORM that is used by Phoenix). I will however use Ecto, but I want this to be minimal and avoid the boilerplate created.
+1) `mix phx.new chap --no-webpack --no-html --no-ecto` - create bare bones Phoenix app. I don't need webpack or html, because I'm not having a UI here, and I also opt out of Ecto (ORM that is used by Phoenix). I will however use Ecto (clickhouse_ecto package), but I want this to be minimal and avoid the boilerplate created.
 2) Verify that it works: `mix phx.server` should run successfully.
 
-    Now we need to add dependency to be able to talk to Clickhouse, and we have a trouble. The https://github.com/clickhouse-elixir/clickhouse_ecto which I want to use has an issue with the Clickhouse version that I have deployed. 
+    Now I need to add dependency to be able to talk to Clickhouse, and I have a trouble. The https://github.com/clickhouse-elixir/clickhouse_ecto which I want to use has an issue with the Clickhouse version that I have deployed. 
     
-    I have mentioned it here: https://github.com/clickhouse-elixir/clickhousex/issues/42 , but fortunately I don't have to wait for it to be fixed! The folks at Plausible found a consistent way of dealing with the issue, and we can add the dependency like this to our `mix.exs`: `{:clickhouse_ecto, git: "https://github.com/plausible/clickhouse_ecto.git"}`
+    I have mentioned it here: https://github.com/clickhouse-elixir/clickhousex/issues/42 , but fortunately I don't have to wait for it to be fixed! The folks at Plausible found a consistent way of dealing with the issue (using Hackney to construct headers, instead of writing them out explicitly in a problematic way), and I can add the dependency like this to my `mix.exs`: `{:clickhouse_ecto, git: "https://github.com/plausible/clickhouse_ecto.git"}`
 
 3) Add config for Clickhouse-Ecto to [config](src/chap/config/dev.exs). As you can see, it includes secrets, that should otherwise be passed as environment variables. I also set `show_sensitive_data_on_connection_error` to true, to be able to debug queries. 
     ```
@@ -171,19 +174,19 @@ At this point I assume that you have Elixir and Phoenix of version >= 1.5 instal
           ownership_timeout: 60_000,
           pool_size: 30
     ```
-   Because I will be deploying this, I'm also preparing a production config. I prefer to parametrize it with environment variables, so I'm using [runtime config](src/chap/config/runtime.exs) to parametrize. These will not be baked into the release, and will be possible to provide when we start the binary.
+   I will be deploying this, so I'm also preparing a production config. I prefer to parametrize it with environment variables, so I'm using [runtime config](src/chap/config/runtime.exs) to parametrize. These will not be baked into the release, and will be possible to provide when I start the binary.
 
-4) We need to create the Ecto repo, which will take care of interfacing with the database. Here is the [implementation](src/chap/lib/chap/clickhouse_repo.ex). We also need to add it to our [application supervision tree](src/chap/lib/chap/application.ex), in the children section.
-5) I also want to reduce the time spent on waiting for the results that we've already have computed, so an [ETS cache](src/chap/lib/chap/cache.ex) is introduced. It has to also be added to the supervision tree. You can find a valuable discussion on where in the supervision tree should ETS live [here](https://elixirforum.com/t/do-we-need-a-process-for-ets-tables/22705/4). 
-6) I'll have a controller ready to accept my requests. I have added a [funnel controller](src/chap/lib/chap_web/controllers/funnel_controller.ex) here, and exposed it in the [router](src/chap/lib/chap_web/router.ex). As you can see, we have two routes, one is GET and one is POST. The GET route has hardcoded parameters and it is how I was learning. The POST is the endpoint that would be used by the UI. You can also see the `IO.inspect` calls - I love to learn how my stuff works by printing everything.
+4) I need to create the Ecto repo, which will take care of interfacing with the database. Here is the [implementation](src/chap/lib/chap/clickhouse_repo.ex). I also need to add it to my [application supervision tree](src/chap/lib/chap/application.ex), in the children section.
+5) I also want to reduce the time spent on waiting for the results that I've already have computed, so an [ETS cache](src/chap/lib/chap/cache.ex) is introduced. It has to also be added to the supervision tree. You can find a valuable discussion on where in the supervision tree should ETS live [here](https://elixirforum.com/t/do-we-need-a-process-for-ets-tables/22705/4).
+6) I'll have a controller ready to accept my requests. I have added a [funnel controller](src/chap/lib/chap_web/controllers/funnel_controller.ex) here, and exposed it in the [router](src/chap/lib/chap_web/router.ex). As you can see, I have two routes, one is GET and one is POST. The GET route has hardcoded parameters and it is how I was learning. The POST is the main endpoint that would be used by e.g. UI. You can also see the `IO.inspect` calls - I love to learn how my stuff works by printing everything.
 7) Finally, a [health controller](src/chap/lib/chap_web/controllers/health_controller.ex) to provide endpoints for k8s liveness and readiness probes.  
 
-To deploy Phoenix app we'll be using a [Dockerfile](src/chap/Dockerfile) and a [manifest](infra/chap/installation.yaml). Here I hardcode some secrets, but normally I would be creating secret values and secrets in k8s cluster via Terraform, to avoid putting them into code at all. 
+To deploy Phoenix app I'll be using a [Dockerfile](src/chap/Dockerfile) and a [manifest](infra/chap/installation.yaml). Here I hardcode some secrets, but normally I would be creating secret values and secrets in k8s cluster via Terraform, to avoid putting them into code at all. 
 
-At this point we have everything, except the actual funnel implementation. In the next section let me walk through it step by step.
+At this point I have everything, except the actual funnel implementation. In the next section let me walk through it step by step.
 
 ### Funnel implementation
-The code is [here](src/chap/lib/chap/funnel.ex). I will walk through each section of the file.
+The code is [here](src/chap/lib/chap/funnel.ex). I will walk through each section of the file. First I show the code section, and below is the comment.
 
 ```elixir
 defmodule Chap.Funnel do
@@ -214,28 +217,15 @@ Here I specify a struct to keep the parameters needed to reproduce the funnel. I
   end
 ```
 
-Here we define a few fragments of the query, specifically, the breakdown section (used in GROUP BY) and events list section (used in the Clickhouse windowFunnel function, which I'll show in a moment).
+Here I define a few fragments of the query, specifically, the breakdown section (used in GROUP BY) and events list section (used in the Clickhouse windowFunnel function, which I'll show in a moment).
 
 ```elixir
-  @doc """
-  Serialize the funnel config into a deterministic string to calculate the hash.
-  """
-  def serialize(funnel_config) do
-    """
-        #{funnel_config.breakdown_fields}-
-        #{funnel_config.ordered_event_list}-
-        #{funnel_config.uid_column}-
-        #{funnel_config.timestamp_column}-
-        #{funnel_config.window}
-    """
-  end
 
   @doc """
   Hash the funnel config to store in the ETS cache.
   """
   def hash_config(funnel_config) do
     funnel_config
-    |> serialize
     |> :erlang.phash2
   end
 
@@ -250,9 +240,7 @@ Here we define a few fragments of the query, specifically, the breakdown section
   end
 ```
 
-In this section I turn the funnel config struct into a string, to make sure my hash is deterministic (Maps / Structs are not ordered in Elixir, as far as I remember).
-
-I hash the config by using Erlang phash2 function, and then I also define a function that I will use to store the funnel config and query result in the cache. 
+I hash the config by using Erlang phash2 function, and then I also define a function that I will use to store the funnel config and query result in the cache.
 
 ```elixir
   @doc """
@@ -289,7 +277,7 @@ I hash the config by using Erlang phash2 function, and then I also define a func
 
 Clickhouse has a few [parametric aggregate functions](https://clickhouse.tech/docs/en/sql-reference/aggregate-functions/parametric-functions/), of which the windowFunnel will be the highlight today.
 
-Here we take the list of events and breakdowns we received in a POST request, and construct a query that will check, how many unique users reached a certain step (or level) in the funnel.
+Here I will take the list of events and breakdowns received in a POST request, and construct a query that will check, how many unique users reached a certain step (or level) in the funnel.
 
 An example query (you can run it against the cluster directly) would look like this, and the query formatting code here aims at making this flexible:
 
@@ -349,7 +337,7 @@ An example query (you can run it against the cluster directly) would look like t
   end
 ```
 
-There is one detail here, which is the way funnel is displayed in e.g. Mixpanel, versus what we see here.
+There is one detail here, which is the way funnel is displayed in e.g. Mixpanel, versus what you can see here.
 
 In Mixpanel, each subsequent level of the funnel has the total number of users that reached this or more levels. 
 Clickhouse windowFunnel instead returns a total number of users that stopped at this level.
@@ -397,7 +385,7 @@ This section formats the data in a way similar to Mixpanel.
   end
 ```
 
-This final section puts everything together, and it is what we use in the [controller](src/chap/lib/chap_web/controllers/funnel_controller.ex).
+This final section puts everything together, and it is what I use in the [controller](src/chap/lib/chap_web/controllers/funnel_controller.ex).
 
 ### Verifying that it works
 I didn't write any tests, sorry! So let's just curl this a little bit:
@@ -417,7 +405,7 @@ curl -X POST "http://localhost:4000/api/funnel" -H  "accept: application/json" -
 ## Conclusion
 I've had this hobby project idea in my TODO list for about 3 years now, and only now I've managed to fulfill it. It felt awesome to code something that I was genuinely interested in, without having to think about it as a "deliverable". 
 
-In practice, Clickhouse feels like a great tool with a massive amount of optimizations and configurations available, which makes it stand out (perhaps not always in a better way) compared to solutions like Snowflake, BigQuery or Redshift, where most of the things just work without much need for configuration. However, as benchmarks show, Clickhouse can blow them out of the water if done properly, and let's be fair, there is much more engineering fun working with a tool like this. I hope that it stays actively developed and we'll see more examples of how to set it up for production with a reasonable set of conventions.
+In practice, Clickhouse feels like a great tool with a massive amount of optimizations and configurations available, which makes it stand out (perhaps not always in a better way, depending on how you look at it) compared to solutions like Snowflake, BigQuery or Redshift, where most of the things just work without much need for configuration. However, as benchmarks show, Clickhouse can blow them out of the water if done properly, and let's be fair, there is a lot of engineering fun working with a tool like this. I hope that it stays actively developed and we'll see more examples of how to set it up for production with a reasonable set of conventions, avoiding the necessity to dive deeper into configuration until it's really crucial.
 
 As for this repo, yes, there are no unit tests, and yes, the tech choices may or may not be the best for the job, but who cares? I was having fun, I've learned a few things about k8s, Zookeeper, Clickhouse and Elixir as I was preparing this repo, and I've reminded myself about why this profession attracted me in the first place.
 
